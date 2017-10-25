@@ -1,0 +1,47 @@
+version: '3'
+services:
+  app_postgres:
+    container_name: <%= projectNameDocker %>_postgres
+    image: "mdillon/postgis"
+    ports:
+      - <%= localPortPostgres %>:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=<%= projectNameDocker %>
+  app_redis:
+    container_name: <%= projectNameDocker %>_redis
+    image: redis:3.2
+    ports:
+      - <%= localPortRedis %>:6379
+  app:
+    container_name: <%= projectNameDocker %>
+    build: .
+    volumes:
+      - ./.env:/app/.env
+      - ./index.js:/app/index.js
+      - ./package.json:/app/package.json
+      - ./api:/app/api
+      - ./public:/app/public
+      - ./src:/app/src
+      - ./build:/app/build
+    depends_on:
+      - app_postgres
+      - app_redis
+    links:
+      - app_postgres
+      - app_redis
+    ports:
+      - <%= localPortReactDevServer %>:3000 # React Development Server
+      - <%= localPortWebApp %>:3001 # Web API
+      - <%= localPortNodeDebugger %>:5858 # Debugging port for Web API
+      - <%= localPortSwaggerEditor %>:3002 # Swagger Project Editor
+    environment:
+      DATABASE_URL: postgres://postgres:password@app_postgres:5432/<%= projectNameDocker %>
+      POSTGRES_LOGGING: "true" # Logs out every query that Postgres runs through Sequelize
+      RECREATE_SCHEMA: "true" # Nukes the database on every refresh
+      REDIS_URL: redis://app_redis:6379
+      AUTH_SAML_ENABLED: "false"
+      AUTH_SALESFORCE_ENABLED: "false"
+    command: ["node", "docker.js"]
+    restart: always
